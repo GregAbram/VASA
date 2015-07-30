@@ -42,8 +42,6 @@ def get_storms(request, year):
 @login_required
 def get_storm_info(request, year, storm):
 
-	pdb.set_trace()
-    
 	result = []
 	
 	for dataset in sorted(os.listdir(GRID_DATADIR + '/' + year + '/' + storm + '/consensus')):
@@ -212,8 +210,6 @@ def pack_grid(grid):
     return bytes
     
 def pull_grid(name, year, dataset, timestep, longitude_range, latitude_range, variables):
-
-	pdb.set_trace()
 
     variables = variables.split(',')
 
