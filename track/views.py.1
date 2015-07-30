@@ -1,0 +1,94 @@
+import pdb, h5py, numpy, sqlite3, os, math
+from django.shortcuts import render
+from django.http import HttpResponse
+from django.utils import simplejson
+from django.contrib.auth.decorators import login_required
+from django.template import RequestContext, Template
+import time, calendar;
+from numpy import array as na
+from scipy.interpolate import splprep, splev, spalde
+
+VASA_DATADIR='/var/data'
+
+TRACK_DATADIR=VASA_DATADIR + '/track_data'
+
+def cvt_time(s):
+        t = calendar.timegm(time.strptime(s, '%Y-%m-%d %H:%M:%SZ'))
+        return t / (60.0 * 60.0)
+
+Radii_12Hr = [33, 52, 72, 92, 128, 177, 229];
+
+@login_required
+def view(request):
+    return render(request, 'viewer.html', {})
+
+@login_required
+def info(request, name, year):
+    j = simplejson.dumps({'status': 'OK', 'result': {'name': name, 'status': 'its raining'}})
+    return HttpResponse(j, mimetype = u'application/json')
+
+@login_required
+def list(request):
+    d = sqlite3.connect(TRACK_DATADIR + "/hurricanes.db")
+    c = d.cursor()
+    c.execute('select name, date from storms order by date')
+    r = []
+    for name, date in c:
+        r.append({'name': name, 'year': date[:4]})
+    j = simplejson.dumps({'status': 'OK', 'result': r})
+    return HttpResponse(j, mimetype = u'application/json')
+
+@login_required
+def track(request, name, year):
+    y = year[:4] + "%"
+    d = sqlite3.connect(TRACK_DATADIR + "/hurricanes.db")
+    c = d.cursor()
+    c.execute('select id from storms where name == "%s" and date like "%s"' % (name, y))
+    id = c.fetchone()[0]
+    fixes = []
+    c.execute('select fixtime, lat, lon, maxwind, min_pressure from fixes where storm == %s order by fixtime' % id)
+    for t,lat,lon,w,p in c:
+	fixes.append({'time': t, 'lat': lat, 'lon': lon, 'max wind': w, 'min pressure': p})
+
+    t = [cvt_time(p['time']) for p in fixes]
+    x = [-float(p['lon'][:-1]) for p in fixes]
+    y = [float(p['lat'][:-1]) for p in fixes]
+
+    w = [1 for i in x]
+    w[0]  = 1000
+    w[-1] = 1000
+    spln,u  = splprep([x,y], u=t, w=w)
+
+    nhours = 4.0
+
+    # how many samples?  sample at least every  nhours
+    total_time = t[-1] - t[0] # in hours
+    number_of_intervals = int(total_time / nhours) + 1
+    delta_t = total_time / number_of_intervals
+    sample_t = [t[0] + delta_t*i for i in range(number_of_intervals + 1)]
+
+    # x,y = splev(sample_t, spln)
+    x,y = splev(t, spln)
+    x = [i for i in x]
+    y = [i for i in y]
+
+    tt = [x[0]] + x + [x[-1]]
+    dx = [j-i for i,j in zip(tt[:-2], tt[2:])]
+    tt = [y[0]] + y + [y[-1]]
+    dy = [j-i for i,j in zip(tt[:-2], tt[2:])]
+    l  = [math.sqrt(i*i + j*j) for i,j in zip(dx,dy)]
+    rx = [k + (i/j)  for i,j,k in zip(dy,l,x)]
+    ry = [k + (-i/j) for i,j,k in zip(dx,l,y)]
+    lx = [k - (i/j)  for i,j,k in zip(dy,l,x)]
+    ly = [k - (-i/j) for i,j,k in zip(dx,l,y)]
+
+    lx.reverse()
+    ly.reverse()
+
+    x = rx + lx
+    y = ry + ly
+
+    spline = zip(x,y)
+
+    j = simplejson.dumps({'status': 'OK', 'result': fixes, 'spline': spline})
+    return HttpResponse(j, mimetype = u'application/json')

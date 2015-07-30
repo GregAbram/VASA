@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% comment %} Main page of the website.  {% endcomment %}
+{% block head %}
+<script type="text/javascript" language="javascript" src="{{ STATIC_URL }}lib/jquery.cookies.2.2.0.min.js"></script>
+<script type="text/javascript" language="javascript" src="{{ STATIC_URL }}lib/jquery.blockUI.js"></script>
+<title>VASA</title>
+
+<script>
+
+function foo()
+{
+  $.ajax({url: '/adcirc/binary', success: function(data) { alert(data); }})
+}
+
+function bar(data)
+{
+   alert(data)
+}
+
+</script>
+
+
+{% endblock %}
+{% block content %}
+
+
+<body id="main_container" style="height:1000px; width:1000px">
+<input type=button onclick=foo() value=DoIt>
+</body>
+{% endblock %}
+
+
+
+
+

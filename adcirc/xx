@@ -1,0 +1,77 @@
+@login_required
+def prediction(request, name, year, t_now):
+
+    t_now = float(t_now)
+
+    y = year[:4] + "%"
+    d = sqlite3.connect(TRACK_DATADIR + "/hurricanes.db")
+    c = d.cursor()
+    c.execute('select id from storms where name == "%s" and date like "%s"' % (name, y))
+    id = c.fetchone()[0]
+    fixes = []
+    c.execute('select fixtime, lon, lat from fixes where storm == %s order by fixtime' % id)
+    for t,lon,lat in c:
+	fixes.append((t,lon,lat))
+
+    t = [cvt_time(p[0]) for p in fixes]
+    x = [-float(p[1][:-1]) for p in fixes]
+    y = [float(p[2][:-1]) for p in fixes]
+
+    t0 = t[0]
+    t = [i - t0 for i in t]
+
+    t_end = t_now + 84
+    if t_end > t[-1]:
+	t_end = t[-1]
+
+    nhours = 24
+
+    # how many samples?  sample at least every  nhours
+    total_time = t_end - t_now # in hours
+    number_of_intervals = int(total_time / nhours) + 1
+    print number_of_intervals
+    delta_t = total_time / number_of_intervals
+    sample_t = [t_now + delta_t*i for i in range(number_of_intervals + 1)]
+
+    f = interp1d(t, zip(x,y), axis=0)
+    points = [f(t) for t in sample_t]
+    x = [p[0] for p in points]
+    y = [p[1] for p in points]
+
+    tt = [x[0]] + x + [x[-1]]
+    dx = [j-i for i,j in zip(tt[:-2], tt[2:])]
+    tt = [y[0]] + y + [y[-1]]
+    dy = [j-i for i,j in zip(tt[:-2], tt[2:])]
+
+    rx = [i + j for i,j in zip(x,dy)]
+    ry = [i - j for i,j in zip(y,dx)]
+
+
+    # Use those to figure out scaling  - the following gives the distance between
+    # each point and a point along its perpendicular in NM
+    cosPhi = [math.cos((math.radians(i) + math.radians(j)) / 2.0) for i,j in zip(y,ry)]
+    a = [(math.radians(i) - math.radians(j))*k for i,j,k in zip(x,rx,cosPhi)]
+    b = [(math.radians(i) - math.radians(j)) for i,j in zip(y,ry)]
+    d  = [3440.07 * math.sqrt(i*i + j*j) for i,j in zip(a,b)]
+
+    # The following gives the desired distance in NM
+    rfunc = interp1d([12.0 * t for t in range(len(Radii_12Hr))], Radii_12Hr)
+    r = [rfunc(i - t_now) for i in sample_t]
+
+    # scaling is the ratio of the desired radius to the radius given by the 
+    # calculation of the perpendicular vector above
+    s = [i/j for i,j in zip(r, d)]
+
+    rx = [i + j*k for i,j,k in zip(x,dy,s)]
+    ry = [i - j*k for i,j,k in zip(y,dx,s)]
+    lx = [i - j*k for i,j,k in zip(x,dy,s)]
+    ly = [i + j*k for i,j,k in zip(y,dx,s)]
+
+    lx.reverse()
+    ly.reverse()
+
+    shape = zip(rx + lx, ry + ly)
+
+    j = simplejson.dumps({'status': 'OK', 'result': shape})
+    return HttpResponse(j, mimetype = u'application/json')
+

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% comment %} Main page of the website.  {% endcomment %}
+{% block head %}
+<script type="text/javascript" language="javascript" src="{{ STATIC_URL }}lib/jquery.cookies.2.2.0.min.js"></script>
+<script type="text/javascript" language="javascript" src="{{ STATIC_URL }}lib/jquery.blockUI.js"></script>
+<script type="text/javascript" language="javascript" src="{{ STATIC_URL }}lib/OpenLayers.js"></script>
+<title>VASA</title>
+{% endblock %}
+{% block content %}
+
+<body id="main_container" style="height:1000px; width:1000px">
+    <div>Welcome!</div>
+    <br><a href="track/view">Historical Track Viewer</a>
+    <br><a href="adcirc/track_viewer">ADCIRC Track Viewer</a>
+    <br><a href="windradii/contour_viewer">WindRadii Contour Viewer</a>
+    <br><a href="hcone/contour_viewer">Hurricane Probability Contour Viewer</a>
+</body>
+{% endblock %}
+
+
+
+
+

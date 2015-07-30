@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% comment %} Main page of the website.  {% endcomment %}
+{% block head %}
+<script type="text/javascript" language="javascript" src="{{ STATIC_URL }}lib/jquery.cookies.2.2.0.min.js"></script>
+<script type="text/javascript" language="javascript" src="{{ STATIC_URL }}lib/jquery.blockUI.js"></script>
+<script type="text/javascript" language="javascript" src="{{ STATIC_URL }}lib/OpenLayers.js"></script>
+<script type="text/javascript" language="javascipt" src="{{ STATIC_URL }}lib/viewer.js"></script>
+<title>VASA</title>
+{% endblock %}
+{% block content %}
+
+<body id="main_container" style="height:1000px; width:1000px">
+    <div style="background-color:#E0E0E0; position:absolute; top:0px; left:0px; z-index:1005;">
+ 	<label style="float:left; position:relative">Select a storm: </label>
+        <select id="storm_selector" style="position:relative; float:left; left:10px; width:auto" onchange="get_track(this.options[this.selectedIndex].value)">Select a storm</select>
+    </div>
+    <div id="map" style="position:absolute; top:0px; left:0px; height:100%; width:100%"></div>
+</div>
+</body>
+{% endblock %}
+
+
+
+
+
